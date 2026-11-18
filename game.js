@@ -1,7 +1,7 @@
-const colorNames = { yellow: '노랑', green: '초록', blue: '하늘', purple: '보라' };
+const colorNames = { yellow: '노랑', green: '초록', blue: '하늘', purple: '보라', white: '흰색' };
 const colors = Object.keys(colorNames);
 const shapes = ['diamond', 'square', 'triangle', 'circle', 'star'];
-const colorDistribution = [9, 7, 6, 4];
+const colorDistribution = [8, 6, 5, 4, 3];
 const shapeDistribution = [8, 6, 5, 4, 3];
 const shapeSvg = {
   diamond: '<polygon points="12,1 23,12 12,23 1,12"/>',
@@ -43,7 +43,8 @@ function randomInteger(minimum, maximum) {
 }
 
 function createDeck() {
-  const colorBag = colors.flatMap((color, index) => Array(colorDistribution[index]).fill(color));
+  const shuffledColorDistribution = shuffle(colorDistribution);
+  const colorBag = colors.flatMap((color, index) => Array(shuffledColorDistribution[index]).fill(color));
   const shapeBag = shapes.flatMap((shape, index) => Array(shapeDistribution[index]).fill(shape));
   const shuffledColors = shuffle(colorBag);
   const shuffledShapes = shuffle(shapeBag);
