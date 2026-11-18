@@ -8,8 +8,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Gowun+Batang:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=white-card">
-  <script src="game.js?v=harder-clues" defer></script>
+  <link rel="stylesheet" href="styles.css?v=online-race">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.107.0/dist/umd/supabase.js" integrity="sha384-CQbEv3UOeYwlaBLdPF5KqEagCP39Q1KpvJC6Gwa3UGjZAwMvpA+0TFxSSnrgb4MX" crossorigin="anonymous"></script>
+  <script src="supabase-config.js?v=1"></script>
+  <script src="game.js?v=online-race" defer></script>
+  <script src="multiplayer.js?v=1" defer></script>
 </head>
 <body>
   <main class="game-shell">
@@ -18,7 +21,13 @@
         <span class="mark-icon" aria-hidden="true">◆</span>
         <span>FIELD NOTES <span class="wordmark-separator">/</span> NO. 026</span>
       </a>
-      <div class="topbar-meta"><span class="live-dot"></span> LOGIC STUDY <span class="meta-divider">·</span> 01</div>
+      <div class="topbar-right">
+        <div class="topbar-meta"><span class="live-dot"></span> LOGIC STUDY <span class="meta-divider">·</span> 01</div>
+        <button class="online-button" id="multiplayer-button" type="button">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="7" cy="7" r="3"/><circle cx="14" cy="8" r="2.3"/><path d="M1.8 17c.3-3 2-4.5 5.2-4.5s4.9 1.5 5.2 4.5M12 13c2.8-.7 5.4.6 6.2 3.2"/></svg>
+          <span>2인 대결</span>
+        </button>
+      </div>
     </header>
 
     <section class="intro" id="top" aria-labelledby="page-title">
@@ -34,6 +43,15 @@
         <span class="stamp-small">DECODE</span>
       </div>
     </section>
+
+    <aside class="multiplayer-banner" id="multiplayer-banner" aria-live="polite" aria-labelledby="multiplayer-status" hidden>
+      <span class="multiplayer-indicator" aria-hidden="true"></span>
+      <p id="multiplayer-status">대결 방을 준비하고 있어요</p>
+      <div class="multiplayer-actions">
+        <button class="copy-link-button" id="copy-room-link" type="button" hidden>초대 링크 복사</button>
+        <button class="leave-room-button" id="leave-room" type="button" hidden>대결 나가기</button>
+      </div>
+    </aside>
 
     <section class="workspace" aria-label="암호 퍼즐">
       <div class="cards-panel">

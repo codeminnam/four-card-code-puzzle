@@ -24,10 +24,18 @@ const clueList = document.querySelector('#clue-list');
 const clueCount = document.querySelector('#clue-count');
 const puzzleNumberDisplay = document.querySelector('#puzzle-number');
 const toast = document.querySelector('#result-toast');
+const multiplayerButton = document.querySelector('#multiplayer-button');
+const multiplayerBanner = document.querySelector('#multiplayer-banner');
+const multiplayerStatus = document.querySelector('#multiplayer-status');
+const copyRoomLinkButton = document.querySelector('#copy-room-link');
+const leaveRoomButton = document.querySelector('#leave-room');
 let toastTimer;
 let cards = [];
 let clues = [];
 let puzzleNumber = 1;
+let multiplayerMode = false;
+let gameOver = false;
+let remoteSubmitHandler = null;
 
 function shuffle(items) {
   const shuffled = [...items];
@@ -194,13 +202,33 @@ function renderSelection() {
     const isSelected = selected.has(button.dataset.letter);
     button.classList.toggle('selected', isSelected);
     button.setAttribute('aria-pressed', String(isSelected));
-    button.disabled = !isSelected && selected.size === 4;
+    button.disabled = gameOver || (!isSelected && selected.size === 4);
   });
 }
 
 function evaluateCode() {
   const chosen = [...selected].sort().map((letter) => cards[letter.charCodeAt(0) - 65]);
+  return evaluateCards(chosen);
+}
+
+function evaluateLetters(letters) {
+  if (!Array.isArray(letters) || letters.length !== 4 || new Set(letters).size !== 4) return null;
+  const chosen = [...letters].sort().map((letter) => cards[letter.charCodeAt(0) - 65]);
+  if (chosen.some((card) => !card)) return null;
+  return evaluateCards(chosen);
+}
+
+function evaluateCards(chosen) {
+  if (clues.some((item) => typeof item.test !== 'function')) return null;
   return Object.fromEntries(clues.map((item) => [item.id, item.test(chosen)]));
+}
+
+function renderResults(results) {
+  clueList.querySelectorAll('li').forEach((item) => {
+    const passes = results[item.dataset.clue];
+    item.classList.toggle('pass', passes);
+    item.classList.toggle('fail', !passes);
+  });
 }
 
 function renderClues() {
@@ -246,15 +274,16 @@ submitButton.addEventListener('click', () => {
     showToast('카드를 네 장 선택한 다음 확인해 주세요.', true);
     return;
   }
-  const results = evaluateCode();
-  clueList.querySelectorAll('li').forEach((item) => {
-    const passes = results[item.dataset.clue];
-    item.classList.toggle('pass', passes);
-    item.classList.toggle('fail', !passes);
-  });
   const code = [...selected].sort().join('');
+  if (remoteSubmitHandler) {
+    remoteSubmitHandler(code);
+    return;
+  }
+  const results = evaluateCode();
+  renderResults(results);
   const passed = Object.values(results).every(Boolean);
   showToast(passed ? `${code} — 모든 단서를 풀었습니다. 암호가 열렸어요.` : `${code} — 아직 맞지 않는 단서가 있어요. 표시된 조건을 다시 살펴보세요.`, !passed);
+  if (passed && multiplayerMode) window.FourCardMultiplayer?.hostSolved(code);
 });
 
 resetButton.addEventListener('click', () => {
@@ -265,6 +294,7 @@ resetButton.addEventListener('click', () => {
 });
 
 newPuzzleButton.addEventListener('click', () => {
+  if (multiplayerMode) return;
   puzzleNumber += 1;
   const puzzle = generatePuzzle();
   cards = puzzle.cards;
@@ -278,9 +308,82 @@ newPuzzleButton.addEventListener('click', () => {
   renderSelection();
 });
 
+multiplayerButton.addEventListener('click', () => window.FourCardMultiplayer?.startOrJoin());
+copyRoomLinkButton.addEventListener('click', () => window.FourCardMultiplayer?.copyInvite());
+leaveRoomButton.addEventListener('click', () => window.FourCardMultiplayer?.leave());
+
 const firstPuzzle = generatePuzzle();
 cards = firstPuzzle.cards;
 clues = firstPuzzle.clues;
 renderClues();
 renderCards();
 renderSelection();
+
+window.FourCardPuzzle = {
+  getPuzzle() {
+    return {
+      cards: cards.map((card) => ({ ...card })),
+      clues: clues.map(({ id, text }) => ({ id, text }))
+    };
+  },
+  applyRemotePuzzle(puzzle) {
+    if (!Array.isArray(puzzle?.cards) || puzzle.cards.length !== 26 || !Array.isArray(puzzle?.clues) || puzzle.clues.length !== 6) return false;
+    cards = puzzle.cards;
+    clues = puzzle.clues.map(({ id, text }) => ({ id, text, test: null }));
+    selected.clear();
+    gameOver = false;
+    clearClueResults();
+    clearToast();
+    renderClues();
+    renderCards();
+    renderSelection();
+    return true;
+  },
+  evaluateLetters,
+  showResults: renderResults,
+  showToast,
+  setRemoteSubmitHandler(handler) {
+    remoteSubmitHandler = handler;
+  },
+  setMultiplayerMode(active) {
+    multiplayerMode = active;
+    gameOver = false;
+    multiplayerButton.disabled = active;
+    multiplayerButton.querySelector('span').textContent = active ? '대결 중' : '2인 대결';
+    newPuzzleButton.disabled = active;
+    renderSelection();
+  },
+  setStatus(message, { canCopy = false } = {}) {
+    multiplayerStatus.textContent = message;
+    multiplayerBanner.hidden = false;
+    copyRoomLinkButton.hidden = !canCopy;
+    leaveRoomButton.hidden = false;
+  },
+  setGameOver() {
+    gameOver = true;
+    renderSelection();
+  },
+  endMultiplayer() {
+    multiplayerMode = false;
+    gameOver = false;
+    remoteSubmitHandler = null;
+    multiplayerBanner.hidden = true;
+    copyRoomLinkButton.hidden = true;
+    leaveRoomButton.hidden = true;
+    multiplayerButton.disabled = false;
+    multiplayerButton.querySelector('span').textContent = '2인 대결';
+    newPuzzleButton.disabled = false;
+    selected.clear();
+    clearClueResults();
+    clearToast();
+    const puzzle = generatePuzzle();
+    cards = puzzle.cards;
+    clues = puzzle.clues;
+    puzzleNumber += 1;
+    puzzleNumberDisplay.textContent = String(puzzleNumber).padStart(2, '0');
+    document.querySelector('.chapter-stamp').setAttribute('aria-label', `퍼즐 번호 ${puzzleNumberDisplay.textContent}`);
+    renderClues();
+    renderCards();
+    renderSelection();
+  }
+};

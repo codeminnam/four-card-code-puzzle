@@ -41,6 +41,11 @@ button { font: inherit; }
 .mark-icon { color: var(--copper); font-size: 16px; }
 .wordmark-separator, .meta-divider { padding: 0 4px; color: var(--dim); }
 .topbar-meta { display: flex; align-items: center; color: var(--muted); font-family: var(--mono); font-size: 9px; letter-spacing: 1px; }
+.topbar-right { display: flex; align-items: center; gap: 18px; }
+.online-button { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid #59675d; border-radius: 2px; color: var(--green); background: transparent; font-size: 10px; font-weight: 700; cursor: pointer; transition: background .15s ease, color .15s ease; }
+.online-button:hover:not(:disabled) { color: var(--board); background: var(--green); }
+.online-button:disabled { opacity: .6; cursor: default; }
+.online-button svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
 .new-puzzle-button { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid #62503e; border-radius: 2px; color: var(--copper); background: transparent; font-size: 10px; cursor: pointer; transition: background .15s ease, color .15s ease; }
 .new-puzzle-button:hover { color: var(--board); background: var(--copper); }
 .new-puzzle-button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
@@ -125,6 +130,15 @@ h1 em { color: var(--copper); font-style: normal; white-space: nowrap; }
 .clues-footer p { margin: 0; font-family: var(--serif); font-size: 11px; line-height: 1.8; }
 .clues-footer b { color: var(--ink); font-weight: 700; }
 
+.multiplayer-banner { min-height: 50px; display: flex; align-items: center; gap: 11px; margin: -17px 0 20px; padding: 9px 12px; border-top: 1px solid #46584b; border-bottom: 1px solid #46584b; color: #c4d2c4; background: rgba(96, 129, 100, .08); }
+.multiplayer-banner[hidden] { display: none; }
+.multiplayer-indicator { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 9px rgba(145,183,154,.4); }
+.multiplayer-banner p { flex: 1; margin: 0; font-size: 11px; line-height: 1.5; }
+.multiplayer-actions { display: flex; align-items: center; gap: 7px; }
+.multiplayer-actions button { min-height: 30px; padding: 0 9px; border: 1px solid #59675d; border-radius: 2px; color: var(--green); background: transparent; font-size: 10px; cursor: pointer; }
+.multiplayer-actions button:hover { color: var(--board); background: var(--green); }
+.multiplayer-actions button[hidden] { display: none; }
+
 .page-footer { display: flex; justify-content: space-between; padding: 20px 4px 28px; color: #73766c; font-family: var(--mono); font-size: 8px; letter-spacing: 1px; }
 .page-footer i { padding: 0 4px; color: var(--copper); font-style: normal; }
 .result-toast { display: block; position: fixed; right: 25px; bottom: 25px; z-index: 5; max-width: min(360px, calc(100% - 40px)); padding: 14px 18px; border: 1px solid var(--green); border-radius: 3px; color: var(--ink); background: #202b23; box-shadow: 0 8px 26px rgba(0,0,0,.3); font-family: var(--serif); font-size: 13px; line-height: 1.6; animation: toast-in .25s ease-out both; }
@@ -154,8 +168,13 @@ h1 em { color: var(--copper); font-style: normal; white-space: nowrap; }
 
 @media (max-width: 480px) {
   .game-shell { width: calc(100% - 32px); }
-  .topbar { height: 56px; }
-  .topbar-meta { font-size: 8px; }
+  .topbar { height: auto; min-height: 56px; gap: 8px; }
+  .wordmark { gap: 6px; font-size: 8px; letter-spacing: .5px; }
+  .mark-icon { font-size: 14px; }
+  .topbar-meta { display: none; }
+  .topbar-right { gap: 0; }
+  .online-button { gap: 5px; padding: 6px 7px; font-size: 9px; }
+  .online-button svg { width: 13px; height: 13px; }
   .new-puzzle-button { gap: 5px; padding: 6px 7px; font-size: 9px; }
   .intro { padding: 37px 2px 29px; }
   h1 { font-size: 35px; }
@@ -172,6 +191,9 @@ h1 em { color: var(--copper); font-style: normal; white-space: nowrap; }
   .card-actions { flex-wrap: wrap; gap: 12px; }
   .sort-note { max-width: none; flex: 1 1 130px; font-size: 8px; }
   .action-buttons { flex: 0 0 auto; }
+  .multiplayer-banner { flex-wrap: wrap; gap: 8px; margin-top: -10px; }
+  .multiplayer-banner p { flex-basis: calc(100% - 20px); }
+  .multiplayer-actions { margin-left: 18px; }
   .page-footer { font-size: 7px; }
 }
 
