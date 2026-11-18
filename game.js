@@ -71,8 +71,14 @@ function createCluePool(deck, answer) {
   const mostCommonColor = Object.keys(colorFrequency).sort((a, b) => colorFrequency[b] - colorFrequency[a])[0];
   const rarestShapes = Object.keys(shapeFrequency).sort((a, b) => shapeFrequency[a] - shapeFrequency[b]).slice(0, 2);
   const outerSum = values[0] + values[3];
-  const outerMaximum = Math.max(outerSum, randomInteger(28, 54));
-  const extremesMinimum = Math.min(outerSum, randomInteger(10, 32));
+  const middleSum = values[1] + values[2];
+  const middleGap = values[2] - values[1];
+  const spread = values[3] - values[0];
+  const outerMaximum = Math.min(52, outerSum + randomInteger(0, 12));
+  const extremesMinimum = Math.max(2, outerSum - randomInteger(0, 12));
+  const middleMinimum = Math.max(3, middleSum - randomInteger(0, 12));
+  const middleGapMaximum = Math.min(26, middleGap + randomInteger(0, 8));
+  const spreadMinimum = Math.max(1, spread - randomInteger(0, 8));
   const clue = (id, text, test) => ({ id, text, test });
 
   const core = [
@@ -85,14 +91,14 @@ function createCluePool(deck, answer) {
   ];
 
   const extras = [
-    clue('middle-sum', `두 번째 카드와 세 번째 카드 숫자의 합은 <b>${values[1] + values[2]}</b>`,
-      (chosen) => chosen[1].number + chosen[2].number === values[1] + values[2]),
-    clue('middle-gap', `두 번째 카드와 세 번째 카드 숫자의 차는 <b>${values[2] - values[1]}</b>`,
-      (chosen) => chosen[2].number - chosen[1].number === values[2] - values[1]),
+    clue('middle-sum-min', `두 번째 카드와 세 번째 카드 숫자의 합은 <b>${middleMinimum} 이상</b>`,
+      (chosen) => chosen[1].number + chosen[2].number >= middleMinimum),
+    clue('middle-gap-max', `두 번째 카드와 세 번째 카드 숫자의 차는 <b>${middleGapMaximum} 이하</b>`,
+      (chosen) => chosen[2].number - chosen[1].number <= middleGapMaximum),
     clue('outer-max', `첫 번째 카드와 네 번째 카드 숫자의 합은 <b>${outerMaximum} 이하</b>`,
       (chosen) => chosen[0].number + chosen[3].number <= outerMaximum),
-    clue('spread', `가장 큰 숫자와 가장 작은 숫자의 차는 <b>${values[3] - values[0]}</b>`,
-      (chosen) => chosen[3].number - chosen[0].number === values[3] - values[0]),
+    clue('spread-min', `가장 큰 숫자와 가장 작은 숫자의 차는 <b>${spreadMinimum} 이상</b>`,
+      (chosen) => chosen[3].number - chosen[0].number >= spreadMinimum),
     clue('extremes-min', `가장 큰 숫자와 가장 작은 숫자의 합은 <b>${extremesMinimum} 이상</b>`,
       (chosen) => chosen[0].number + chosen[3].number >= extremesMinimum)
   ];
@@ -122,7 +128,7 @@ function createCluePool(deck, answer) {
   return { core, extras, frequencyClues };
 }
 
-function findSolutions(deck, puzzleClues) {
+function findSolutions(deck, puzzleClues, limit = 2) {
   const solutions = [];
   for (let first = 0; first < 23; first += 1) {
     for (let second = first + 1; second < 24; second += 1) {
@@ -131,7 +137,7 @@ function findSolutions(deck, puzzleClues) {
           const chosen = [deck[first], deck[second], deck[third], deck[fourth]];
           if (puzzleClues.every((item) => item.test(chosen))) {
             solutions.push(chosen);
-            if (solutions.length > 1) return solutions;
+            if (solutions.length >= limit) return solutions;
           }
         }
       }
@@ -148,6 +154,7 @@ function generatePuzzle() {
     if (!frequencyClues.length) continue;
     const [frequencyClue] = shuffle(frequencyClues);
     const firstFiveClues = shuffle([...core, ...shuffle(extras).slice(0, 2)]);
+    if (findSolutions(deck, firstFiveClues, 8).length < 8) continue;
     const puzzleClues = [...firstFiveClues, frequencyClue];
     const solutions = findSolutions(deck, puzzleClues);
     if (solutions.length === 1) return { cards: deck, clues: puzzleClues };
