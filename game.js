@@ -73,6 +73,7 @@ function frequencies(items, property) {
 
 function createCluePool(deck, answer) {
   const values = answer.map((card) => card.number);
+  const total = values.reduce((sum, value) => sum + value, 0);
   const colorFrequency = frequencies(deck, 'color');
   const shapeFrequency = frequencies(deck, 'shape');
   const rarestColor = Object.keys(colorFrequency).sort((a, b) => colorFrequency[a] - colorFrequency[b])[0];
@@ -82,6 +83,11 @@ function createCluePool(deck, answer) {
   const middleSum = values[1] + values[2];
   const middleGap = values[2] - values[1];
   const spread = values[3] - values[0];
+  const middleProduct = values[1] * values[2];
+  const outerProduct = values[0] * values[3];
+  const middleProductMinimum = Math.max(2, middleProduct - randomInteger(1, Math.max(1, Math.floor(middleProduct * 0.25))));
+  const outerProductMaximum = outerProduct + randomInteger(1, Math.max(2, Math.floor(outerProduct * 0.2)));
+  const sumMaximum = Math.min(100, total + randomInteger(4, 16));
   const outerMaximum = Math.min(52, outerSum + randomInteger(0, 12));
   const extremesMinimum = Math.max(2, outerSum - randomInteger(0, 12));
   const middleMinimum = Math.max(3, middleSum - randomInteger(0, 12));
@@ -89,26 +95,30 @@ function createCluePool(deck, answer) {
   const spreadMinimum = Math.max(1, spread - randomInteger(0, 8));
   const clue = (id, text, test) => ({ id, text, test });
 
-  const core = [
-    clue('sum', `네 장에 적힌 숫자의 합은 <b>${values.reduce((sum, value) => sum + value, 0)}</b>입니다`,
-      (chosen) => chosen.reduce((sum, card) => sum + card.number, 0) === values.reduce((sum, value) => sum + value, 0)),
-    clue('colors', `사용된 카드의 색깔은 총 <b>${new Set(answer.map((card) => card.color)).size}종류</b>`,
-      (chosen) => new Set(chosen.map((card) => card.color)).size === new Set(answer.map((card) => card.color)).size),
-    clue('shapes', `사용된 카드의 도형은 총 <b>${new Set(answer.map((card) => card.shape)).size}종류</b>`,
-      (chosen) => new Set(chosen.map((card) => card.shape)).size === new Set(answer.map((card) => card.shape)).size)
-  ];
+  const sumExact = clue('sum-exact', `네 장에 적힌 숫자의 합은 <b>${total}</b>입니다`,
+    (chosen) => chosen.reduce((sum, card) => sum + card.number, 0) === total);
+  const sumAtMost = clue('sum-max', `네 장에 적힌 숫자의 합은 <b>${sumMaximum} 이하</b>`,
+    (chosen) => chosen.reduce((sum, card) => sum + card.number, 0) <= sumMaximum);
+  const colorCount = clue('colors', `사용된 카드의 색깔은 총 <b>${new Set(answer.map((card) => card.color)).size}종류</b>`,
+    (chosen) => new Set(chosen.map((card) => card.color)).size === new Set(answer.map((card) => card.color)).size);
+  const shapeCount = clue('shapes', `사용된 카드의 도형은 총 <b>${new Set(answer.map((card) => card.shape)).size}종류</b>`,
+    (chosen) => new Set(chosen.map((card) => card.shape)).size === new Set(answer.map((card) => card.shape)).size);
+  const outerMaximumClue = clue('outer-max', `첫 번째 카드와 네 번째 카드 숫자의 합은 <b>${outerMaximum} 이하</b>`,
+    (chosen) => chosen[0].number + chosen[3].number <= outerMaximum);
+  const extremesMinimumClue = clue('extremes-min', `가장 큰 숫자와 가장 작은 숫자의 합은 <b>${extremesMinimum} 이상</b>`,
+    (chosen) => chosen[0].number + chosen[3].number >= extremesMinimum);
 
-  const extras = [
+  const arithmeticClues = [
     clue('middle-sum-min', `두 번째 카드와 세 번째 카드 숫자의 합은 <b>${middleMinimum} 이상</b>`,
       (chosen) => chosen[1].number + chosen[2].number >= middleMinimum),
     clue('middle-gap-max', `두 번째 카드와 세 번째 카드 숫자의 차는 <b>${middleGapMaximum} 이하</b>`,
       (chosen) => chosen[2].number - chosen[1].number <= middleGapMaximum),
-    clue('outer-max', `첫 번째 카드와 네 번째 카드 숫자의 합은 <b>${outerMaximum} 이하</b>`,
-      (chosen) => chosen[0].number + chosen[3].number <= outerMaximum),
     clue('spread-min', `가장 큰 숫자와 가장 작은 숫자의 차는 <b>${spreadMinimum} 이상</b>`,
       (chosen) => chosen[3].number - chosen[0].number >= spreadMinimum),
-    clue('extremes-min', `가장 큰 숫자와 가장 작은 숫자의 합은 <b>${extremesMinimum} 이상</b>`,
-      (chosen) => chosen[0].number + chosen[3].number >= extremesMinimum)
+    clue('middle-product-min', `두 번째 카드와 세 번째 카드 숫자의 곱은 <b>${middleProductMinimum} 이상</b>`,
+      (chosen) => chosen[1].number * chosen[2].number >= middleProductMinimum),
+    clue('outer-product-max', `첫 번째 카드와 네 번째 카드 숫자의 곱은 <b>${outerProductMaximum} 이하</b>`,
+      (chosen) => chosen[0].number * chosen[3].number <= outerProductMaximum)
   ];
 
   const frequencyClues = [];
@@ -133,7 +143,16 @@ function createCluePool(deck, answer) {
       (chosen) => rarestShapes.includes(chosen[rank - 1].shape)));
   }
 
-  return { core, extras, frequencyClues };
+  return {
+    sumExact,
+    sumAtMost,
+    colorCount,
+    shapeCount,
+    outerMaximumClue,
+    extremesMinimumClue,
+    arithmeticClues,
+    frequencyClues
+  };
 }
 
 function findSolutions(deck, puzzleClues, limit = 2) {
@@ -158,14 +177,45 @@ function generatePuzzle() {
   for (let attempt = 0; attempt < 1000; attempt += 1) {
     const deck = createDeck();
     const answer = shuffle(deck).slice(0, 4).sort((a, b) => a.number - b.number);
-    const { core, extras, frequencyClues } = createCluePool(deck, answer);
-    if (!frequencyClues.length) continue;
-    const [frequencyClue] = shuffle(frequencyClues);
-    const firstFiveClues = shuffle([...core, ...shuffle(extras).slice(0, 2)]);
-    if (findSolutions(deck, firstFiveClues, 8).length < 8) continue;
-    const puzzleClues = [...firstFiveClues, frequencyClue];
+    const pool = createCluePool(deck, answer);
+    const template = randomInteger(1, 3);
+    let preFrequencyClues;
+    let frequencyClue;
+
+    if (template === 1) {
+      if (!pool.frequencyClues.length) continue;
+      frequencyClue = shuffle(pool.frequencyClues)[0];
+      preFrequencyClues = [
+        pool.sumAtMost,
+        pool.colorCount,
+        pool.shapeCount,
+        ...shuffle(pool.arithmeticClues).slice(0, 2)
+      ];
+    } else if (template === 2) {
+      frequencyClue = pool.frequencyClues.find((item) => item.id === 'rare-shape');
+      if (!frequencyClue) continue;
+      const useMultiplication = Math.random() < 0.45;
+      const arithmetic = useMultiplication
+        ? shuffle(pool.arithmeticClues.filter((item) => item.id.includes('product')))[0]
+        : shuffle(pool.arithmeticClues.filter((item) => !item.id.includes('product')))[0];
+      preFrequencyClues = [pool.sumExact, pool.colorCount, pool.shapeCount, arithmetic];
+    } else {
+      frequencyClue = pool.frequencyClues.find((item) => item.id === 'rare-color');
+      if (!frequencyClue) continue;
+      preFrequencyClues = [
+        pool.sumExact,
+        pool.colorCount,
+        pool.shapeCount,
+        pool.outerMaximumClue,
+        pool.extremesMinimumClue
+      ];
+    }
+
+    const candidates = findSolutions(deck, preFrequencyClues, 61);
+    if (candidates.length < 8 || candidates.length > 60) continue;
+    const puzzleClues = [...shuffle(preFrequencyClues), frequencyClue];
     const solutions = findSolutions(deck, puzzleClues);
-    if (solutions.length === 1) return { cards: deck, clues: puzzleClues };
+    if (solutions.length === 1) return { cards: deck, clues: puzzleClues, template };
   }
   throw new Error('유일한 해답을 가진 퍼즐을 만들지 못했습니다.');
 }
@@ -327,7 +377,7 @@ window.FourCardPuzzle = {
     };
   },
   applyRemotePuzzle(puzzle) {
-    if (!Array.isArray(puzzle?.cards) || puzzle.cards.length !== 26 || !Array.isArray(puzzle?.clues) || puzzle.clues.length !== 6) return false;
+    if (!Array.isArray(puzzle?.cards) || puzzle.cards.length !== 26 || !Array.isArray(puzzle?.clues) || ![5, 6].includes(puzzle.clues.length)) return false;
     cards = puzzle.cards;
     clues = puzzle.clues.map(({ id, text }) => ({ id, text, test: null }));
     selected.clear();
