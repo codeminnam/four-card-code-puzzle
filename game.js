@@ -87,16 +87,22 @@ function createCluePool(deck, answer) {
   const outerProduct = values[0] * values[3];
   const middleProductMinimum = Math.max(2, middleProduct - randomInteger(1, Math.max(1, Math.floor(middleProduct * 0.25))));
   const outerProductMaximum = outerProduct + randomInteger(1, Math.max(2, Math.floor(outerProduct * 0.2)));
-  const sumMaximum = Math.min(100, total + randomInteger(4, 16));
-  const outerMaximum = Math.min(52, outerSum + randomInteger(0, 12));
-  const extremesMinimum = Math.max(2, outerSum - randomInteger(0, 12));
-  const middleMinimum = Math.max(3, middleSum - randomInteger(0, 12));
-  const middleGapMaximum = Math.min(26, middleGap + randomInteger(0, 8));
-  const spreadMinimum = Math.max(1, spread - randomInteger(0, 8));
+  const sumMaximum = Math.min(100, total + randomInteger(0, 8));
+  const outerMaximum = Math.min(52, outerSum + randomInteger(0, 6));
+  const extremesMinimum = Math.max(2, outerSum - randomInteger(0, 6));
+  const middleMinimum = Math.max(3, middleSum - randomInteger(0, 8));
+  const middleGapMaximum = Math.min(26, middleGap + randomInteger(0, 5));
+  const spreadMinimum = Math.max(1, spread - randomInteger(0, 5));
   const clue = (id, text, test) => ({ id, text, test });
 
   const sumExact = clue('sum-exact', `네 장에 적힌 숫자의 합은 <b>${total}</b>입니다`,
     (chosen) => chosen.reduce((sum, card) => sum + card.number, 0) === total);
+  const middleSumExact = clue('middle-sum-exact', `두 번째 카드와 세 번째 카드 숫자의 합은 <b>${middleSum}</b>`,
+    (chosen) => chosen[1].number + chosen[2].number === middleSum);
+  const middleProductExact = clue('middle-product-exact', `두 번째 카드와 세 번째 카드 숫자의 곱은 <b>${middleProduct}</b>`,
+    (chosen) => chosen[1].number * chosen[2].number === middleProduct);
+  const spreadExact = clue('spread-exact', `가장 큰 숫자와 가장 작은 숫자의 차는 <b>${spread}</b>`,
+    (chosen) => chosen[3].number - chosen[0].number === spread);
   const sumAtMost = clue('sum-max', `네 장에 적힌 숫자의 합은 <b>${sumMaximum} 이하</b>`,
     (chosen) => chosen.reduce((sum, card) => sum + card.number, 0) <= sumMaximum);
   const colorCount = clue('colors', `사용된 카드의 색깔은 총 <b>${new Set(answer.map((card) => card.color)).size}종류</b>`,
@@ -146,6 +152,9 @@ function createCluePool(deck, answer) {
   return {
     sumExact,
     sumAtMost,
+    middleSumExact,
+    middleProductExact,
+    spreadExact,
     colorCount,
     shapeCount,
     outerMaximumClue,
@@ -178,23 +187,24 @@ function generatePuzzle() {
     const deck = createDeck();
     const answer = shuffle(deck).slice(0, 4).sort((a, b) => a.number - b.number);
     const pool = createCluePool(deck, answer);
-    const template = randomInteger(1, 3);
+    const templateRoll = Math.random();
+    const template = templateRoll < 0.3 ? 1 : templateRoll < 0.9 ? 2 : 3;
     let preFrequencyClues;
     let frequencyClue;
 
     if (template === 1) {
-      if (!pool.frequencyClues.length) continue;
-      frequencyClue = shuffle(pool.frequencyClues)[0];
+      const arithmetic = Math.random() < 0.55 ? pool.middleProductExact : pool.middleSumExact;
       preFrequencyClues = [
         pool.sumAtMost,
         pool.colorCount,
         pool.shapeCount,
-        ...shuffle(pool.arithmeticClues).slice(0, 2)
+        arithmetic,
+        pool.spreadExact
       ];
     } else if (template === 2) {
       frequencyClue = pool.frequencyClues.find((item) => item.id === 'rare-shape');
       if (!frequencyClue) continue;
-      const useMultiplication = Math.random() < 0.45;
+      const useMultiplication = Math.random() < 0.65;
       const arithmetic = useMultiplication
         ? shuffle(pool.arithmeticClues.filter((item) => item.id.includes('product')))[0]
         : shuffle(pool.arithmeticClues.filter((item) => !item.id.includes('product')))[0];
@@ -213,6 +223,12 @@ function generatePuzzle() {
 
     const candidates = findSolutions(deck, preFrequencyClues, 61);
     if (candidates.length < 8 || candidates.length > 60) continue;
+    if (template === 1) {
+      frequencyClue = shuffle(pool.frequencyClues).find((candidate) =>
+        findSolutions(deck, [...preFrequencyClues, candidate]).length === 1
+      );
+      if (!frequencyClue) continue;
+    }
     const puzzleClues = [...shuffle(preFrequencyClues), frequencyClue];
     const solutions = findSolutions(deck, puzzleClues);
     if (solutions.length === 1) return { cards: deck, clues: puzzleClues, template };
