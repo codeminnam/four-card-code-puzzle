@@ -96,28 +96,29 @@ function createCluePool(deck, answer) {
       (chosen) => chosen[0].number + chosen[3].number >= extremesMinimum)
   ];
 
+  const frequencyClues = [];
   const rareColorRanks = answer.flatMap((card, index) => card.color === rarestColor ? [index + 1] : []);
   if (rareColorRanks.length) {
     const rank = rareColorRanks[randomInteger(0, rareColorRanks.length - 1)];
-    extras.push(clue('rare-color', `${rank}번째로 작은 숫자 카드의 색깔은 A–Z 중 <b>가장 적게 등장하는 색깔</b>`,
+    frequencyClues.push(clue('rare-color', `${rank}번째로 작은 숫자 카드의 색깔은 A–Z 중 <b>가장 적게 등장하는 색깔</b>`,
       (chosen) => chosen[rank - 1].color === rarestColor));
   }
 
   const commonColorRanks = answer.flatMap((card, index) => card.color === mostCommonColor ? [index + 1] : []);
   if (commonColorRanks.length) {
     const rank = commonColorRanks[randomInteger(0, commonColorRanks.length - 1)];
-    extras.push(clue('common-color', `${rank}번째로 작은 숫자 카드의 색깔은 A–Z 중 <b>가장 많이 등장하는 색깔</b>`,
+    frequencyClues.push(clue('common-color', `${rank}번째로 작은 숫자 카드의 색깔은 A–Z 중 <b>가장 많이 등장하는 색깔</b>`,
       (chosen) => chosen[rank - 1].color === mostCommonColor));
   }
 
   const rareShapeRanks = answer.flatMap((card, index) => rarestShapes.includes(card.shape) ? [index + 1] : []);
   if (rareShapeRanks.length) {
     const rank = rareShapeRanks[randomInteger(0, rareShapeRanks.length - 1)];
-    extras.push(clue('rare-shape', `${rank}번째로 작은 숫자 카드의 도형은 A–Z 중 <b>가장 적게 등장하는 두 종류의 도형</b> 중 하나`,
+    frequencyClues.push(clue('rare-shape', `${rank}번째로 작은 숫자 카드의 도형은 A–Z 중 <b>가장 적게 등장하는 두 종류의 도형</b> 중 하나`,
       (chosen) => rarestShapes.includes(chosen[rank - 1].shape)));
   }
 
-  return { core, extras };
+  return { core, extras, frequencyClues };
 }
 
 function findSolutions(deck, puzzleClues) {
@@ -142,8 +143,11 @@ function generatePuzzle() {
   for (let attempt = 0; attempt < 1000; attempt += 1) {
     const deck = createDeck();
     const answer = shuffle(deck).slice(0, 4).sort((a, b) => a.number - b.number);
-    const { core, extras } = createCluePool(deck, answer);
-    const puzzleClues = shuffle([...core, ...shuffle(extras).slice(0, 3)]);
+    const { core, extras, frequencyClues } = createCluePool(deck, answer);
+    if (!frequencyClues.length) continue;
+    const [frequencyClue] = shuffle(frequencyClues);
+    const firstFiveClues = shuffle([...core, ...shuffle(extras).slice(0, 2)]);
+    const puzzleClues = [...firstFiveClues, frequencyClue];
     const solutions = findSolutions(deck, puzzleClues);
     if (solutions.length === 1) return { cards: deck, clues: puzzleClues };
   }
