@@ -204,6 +204,8 @@
     guestId = null;
     gameEnded = false;
     updateRoomUrl(roomId);
+    game.setOnlineRole(role);
+    game.setNextRoundHandler(startNextRound);
     game.setMultiplayerMode(true);
     setRoomStatus('대결 방을 연결하고 있습니다…');
     try {
@@ -224,6 +226,8 @@
       : idForRoom(playerMarker, roomId);
     guestId = null;
     gameEnded = false;
+    game.setOnlineRole(role);
+    game.setNextRoundHandler(role === 'host' ? startNextRound : null);
     game.setMultiplayerMode(true);
     setRoomStatus(role === 'host' ? '대결 방에 다시 연결 중입니다…' : '친구의 대결 방에 연결 중입니다…', role === 'host');
     try {
@@ -241,6 +245,21 @@
       await send('attempt', { playerId, attemptId: pendingAttempt, letters: code.split('') });
     } catch (error) {
       pendingAttempt = null;
+      showConnectionError(error);
+    }
+  }
+
+  async function startNextRound() {
+    if (role !== 'host' || !channel || !gameEnded || !guestId) return;
+    gameEnded = false;
+    pendingAttempt = null;
+    try {
+      const puzzle = game.startNewPuzzle();
+      await send('room-state', { hostId: playerId, guestId, puzzle });
+      setRoomStatus('새 라운드입니다. 먼저 암호를 풀어보세요.');
+    } catch (error) {
+      gameEnded = true;
+      game.setGameOver();
       showConnectionError(error);
     }
   }

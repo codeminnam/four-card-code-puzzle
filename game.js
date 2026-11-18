@@ -37,7 +37,9 @@ let puzzleNumber = 1;
 let puzzleType = 1;
 let multiplayerMode = false;
 let gameOver = false;
+let onlineRole = null;
 let remoteSubmitHandler = null;
+let nextRoundHandler = null;
 
 function shuffle(items) {
   const shuffled = [...items];
@@ -166,33 +168,63 @@ function createCluePool(deck, answer) {
   };
 }
 
-function findSolutions(deck, puzzleClues, limit = 2) {
-  const solutions = [];
+function allCombinations(deck) {
+  const combinations = [];
   for (let first = 0; first < 23; first += 1) {
     for (let second = first + 1; second < 24; second += 1) {
       for (let third = second + 1; third < 25; third += 1) {
         for (let fourth = third + 1; fourth < 26; fourth += 1) {
-          const chosen = [deck[first], deck[second], deck[third], deck[fourth]];
-          if (puzzleClues.every((item) => item.test(chosen))) {
-            solutions.push(chosen);
-            if (solutions.length >= limit) return solutions;
-          }
+          combinations.push([deck[first], deck[second], deck[third], deck[fourth]]);
         }
       }
     }
   }
-  return solutions;
+  return combinations;
+}
+
+function selectProgressiveClues(deck, preFrequencyClues, frequencyClues) {
+  const combinations = allCombinations(deck);
+  const randomizedFrequencyClues = shuffle(frequencyClues);
+
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const orderedClues = shuffle(preFrequencyClues);
+    let remaining = combinations;
+    let previousCount = combinations.length;
+    let progressive = true;
+
+    for (const clue of orderedClues) {
+      remaining = remaining.filter((chosen) => clue.test(chosen));
+      if (remaining.length >= previousCount) {
+        progressive = false;
+        break;
+      }
+      previousCount = remaining.length;
+      if (remaining.length < 2) {
+        progressive = false;
+        break;
+      }
+    }
+
+    if (!progressive || remaining.length < 2 || remaining.length > 6) continue;
+    const finalClue = randomizedFrequencyClues.find((clue) =>
+      remaining.filter((chosen) => clue.test(chosen)).length === 1
+    );
+    if (finalClue) return [...orderedClues, finalClue];
+  }
+
+  return null;
 }
 
 function generatePuzzle() {
   for (let attempt = 0; attempt < 1000; attempt += 1) {
     const deck = createDeck();
     const answer = shuffle(deck).slice(0, 4).sort((a, b) => a.number - b.number);
+    if (new Set(answer.map((card) => card.color)).size === 2) continue;
     const pool = createCluePool(deck, answer);
     const templateRoll = Math.random();
     const template = templateRoll < 0.3 ? 1 : templateRoll < 0.9 ? 2 : 3;
     let preFrequencyClues;
-    let frequencyClue;
+    let frequencyClues;
 
     if (template === 1) {
       const arithmetic = Math.random() < 0.55 ? pool.middleProductExact : pool.middleSumExact;
@@ -203,17 +235,18 @@ function generatePuzzle() {
         arithmetic,
         pool.spreadExact
       ];
+      frequencyClues = pool.frequencyClues;
     } else if (template === 2) {
-      frequencyClue = pool.frequencyClues.find((item) => item.id === 'rare-shape');
-      if (!frequencyClue) continue;
+      frequencyClues = pool.frequencyClues.filter((item) => item.id === 'rare-shape');
+      if (!frequencyClues.length) continue;
       const useMultiplication = Math.random() < 0.65;
       const arithmetic = useMultiplication
         ? shuffle(pool.arithmeticClues.filter((item) => item.id.includes('product')))[0]
         : shuffle(pool.arithmeticClues.filter((item) => !item.id.includes('product')))[0];
       preFrequencyClues = [pool.sumExact, pool.colorCount, pool.shapeCount, arithmetic];
     } else {
-      frequencyClue = pool.frequencyClues.find((item) => item.id === 'rare-color');
-      if (!frequencyClue) continue;
+      frequencyClues = pool.frequencyClues.filter((item) => item.id === 'rare-color');
+      if (!frequencyClues.length) continue;
       preFrequencyClues = [
         pool.sumExact,
         pool.colorCount,
@@ -223,17 +256,8 @@ function generatePuzzle() {
       ];
     }
 
-    const candidates = findSolutions(deck, preFrequencyClues, 61);
-    if (candidates.length < 8 || candidates.length > 60) continue;
-    if (template === 1) {
-      frequencyClue = shuffle(pool.frequencyClues).find((candidate) =>
-        findSolutions(deck, [...preFrequencyClues, candidate]).length === 1
-      );
-      if (!frequencyClue) continue;
-    }
-    const puzzleClues = [...shuffle(preFrequencyClues), frequencyClue];
-    const solutions = findSolutions(deck, puzzleClues);
-    if (solutions.length === 1) return { cards: deck, clues: puzzleClues, template };
+    const puzzleClues = selectProgressiveClues(deck, preFrequencyClues, frequencyClues);
+    if (puzzleClues) return { cards: deck, clues: puzzleClues, template };
   }
   throw new Error('유일한 해답을 가진 퍼즐을 만들지 못했습니다.');
 }
@@ -331,6 +355,30 @@ function showToast(message, isError = false) {
   toastTimer = window.setTimeout(() => { toast.hidden = true; }, 3800);
 }
 
+function updateNewPuzzleAvailability() {
+  newPuzzleButton.disabled = multiplayerMode && (!gameOver || onlineRole !== 'host');
+}
+
+function startNewPuzzle() {
+  puzzleNumber += 1;
+  const puzzle = generatePuzzle();
+  cards = puzzle.cards;
+  clues = puzzle.clues;
+  puzzleType = puzzle.template;
+  gameOver = false;
+  selected.clear();
+  clearClueResults();
+  clearToast();
+  puzzleNumberDisplay.textContent = String(puzzleNumber).padStart(2, '0');
+  document.querySelector('.chapter-stamp').setAttribute('aria-label', `퍼즐 번호 ${puzzleNumberDisplay.textContent}`);
+  renderPuzzleType();
+  renderClues();
+  renderCards();
+  updateNewPuzzleAvailability();
+  renderSelection();
+  return window.FourCardPuzzle.getPuzzle();
+}
+
 grid.addEventListener('click', (event) => {
   const button = event.target.closest('.playing-card');
   if (!button || button.disabled) return;
@@ -367,20 +415,11 @@ resetButton.addEventListener('click', () => {
 });
 
 newPuzzleButton.addEventListener('click', () => {
-  if (multiplayerMode) return;
-  puzzleNumber += 1;
-  const puzzle = generatePuzzle();
-  cards = puzzle.cards;
-  clues = puzzle.clues;
-  puzzleType = puzzle.template;
-  selected.clear();
-  clearToast();
-  puzzleNumberDisplay.textContent = String(puzzleNumber).padStart(2, '0');
-  document.querySelector('.chapter-stamp').setAttribute('aria-label', `퍼즐 번호 ${puzzleNumberDisplay.textContent}`);
-  renderPuzzleType();
-  renderClues();
-  renderCards();
-  renderSelection();
+  if (multiplayerMode) {
+    if (gameOver && onlineRole === 'host') nextRoundHandler?.();
+    return;
+  }
+  startNewPuzzle();
 });
 
 multiplayerButton.addEventListener('click', () => window.FourCardMultiplayer?.startOrJoin());
@@ -401,7 +440,8 @@ window.FourCardPuzzle = {
     return {
       cards: cards.map((card) => ({ ...card })),
       clues: clues.map(({ id, text }) => ({ id, text })),
-      template: puzzleType
+      template: puzzleType,
+      puzzleNumber
     };
   },
   applyRemotePuzzle(puzzle) {
@@ -409,10 +449,16 @@ window.FourCardPuzzle = {
     cards = puzzle.cards;
     clues = puzzle.clues.map(({ id, text }) => ({ id, text, test: null }));
     puzzleType = puzzle.template;
+    if (Number.isInteger(puzzle.puzzleNumber)) {
+      puzzleNumber = puzzle.puzzleNumber;
+      puzzleNumberDisplay.textContent = String(puzzleNumber).padStart(2, '0');
+      document.querySelector('.chapter-stamp').setAttribute('aria-label', `퍼즐 번호 ${puzzleNumberDisplay.textContent}`);
+    }
     selected.clear();
     gameOver = false;
     clearClueResults();
     clearToast();
+    updateNewPuzzleAvailability();
     renderPuzzleType();
     renderClues();
     renderCards();
@@ -430,8 +476,18 @@ window.FourCardPuzzle = {
     gameOver = false;
     multiplayerButton.disabled = active;
     multiplayerButton.querySelector('span').textContent = active ? '대결 중' : '2인 대결';
-    newPuzzleButton.disabled = active;
+    updateNewPuzzleAvailability();
     renderSelection();
+  },
+  setOnlineRole(role) {
+    onlineRole = role;
+    updateNewPuzzleAvailability();
+  },
+  setNextRoundHandler(handler) {
+    nextRoundHandler = handler;
+  },
+  startNewPuzzle() {
+    return startNewPuzzle();
   },
   setStatus(message, { canCopy = false } = {}) {
     multiplayerStatus.textContent = message;
@@ -441,31 +497,20 @@ window.FourCardPuzzle = {
   },
   setGameOver() {
     gameOver = true;
+    updateNewPuzzleAvailability();
     renderSelection();
   },
   endMultiplayer() {
     multiplayerMode = false;
     gameOver = false;
+    onlineRole = null;
     remoteSubmitHandler = null;
+    nextRoundHandler = null;
     multiplayerBanner.hidden = true;
     copyRoomLinkButton.hidden = true;
     leaveRoomButton.hidden = true;
     multiplayerButton.disabled = false;
     multiplayerButton.querySelector('span').textContent = '2인 대결';
-    newPuzzleButton.disabled = false;
-    selected.clear();
-    clearClueResults();
-    clearToast();
-    const puzzle = generatePuzzle();
-    cards = puzzle.cards;
-    clues = puzzle.clues;
-    puzzleType = puzzle.template;
-    puzzleNumber += 1;
-    puzzleNumberDisplay.textContent = String(puzzleNumber).padStart(2, '0');
-    document.querySelector('.chapter-stamp').setAttribute('aria-label', `퍼즐 번호 ${puzzleNumberDisplay.textContent}`);
-    renderPuzzleType();
-    renderClues();
-    renderCards();
-    renderSelection();
+    startNewPuzzle();
   }
 };
