@@ -94,7 +94,7 @@ h1 em { color: var(--copper); font-style: normal; white-space: nowrap; }
 .playing-card[data-color="green"] { --card-paper: #c5d5ad; --card-edge: #a5b88f; --card-ink: #344135; }
 .playing-card[data-color="blue"] { --card-paper: #c6e0e4; --card-edge: #a4c6cc; --card-ink: #30434a; }
 .playing-card[data-color="purple"] { --card-paper: #d5c2da; --card-edge: #bda5c4; --card-ink: #443748; }
-.playing-card[data-color="white"] { --card-paper: #f3f2ec; --card-edge: #c6c8c0; --card-ink: #30342f; }
+.playing-card[data-color="white"] { --card-paper: #fff; --card-edge: #68796e; --card-ink: #26312c; }
 .playing-card:nth-last-child(2) { grid-column-start: 5; }
 .playing-card:last-child { grid-column-start: 6; }
 
