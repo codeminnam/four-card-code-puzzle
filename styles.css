@@ -60,6 +60,7 @@ h1 em { color: var(--copper); font-style: normal; white-space: nowrap; }
 .chapter-stamp { width: 84px; height: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #6f5542; color: var(--copper); transform: rotate(3deg); }
 .stamp-small { font-family: var(--mono); font-size: 7px; letter-spacing: 1.4px; }
 .stamp-number { margin: 1px 0; font-family: var(--serif); font-size: 32px; line-height: 1.1; }
+.stamp-type { color: var(--green); font-family: var(--mono); font-size: 6px; line-height: 1.1; }
 .stamp-rule { width: 28px; height: 1px; margin: 2px 0 4px; background: #6f5542; }
 
 .workspace { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(350px, .88fr); min-height: 574px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }

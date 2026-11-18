@@ -23,6 +23,7 @@ const newPuzzleButton = document.querySelector('#new-puzzle-button');
 const clueList = document.querySelector('#clue-list');
 const clueCount = document.querySelector('#clue-count');
 const puzzleNumberDisplay = document.querySelector('#puzzle-number');
+const puzzleTypeDisplay = document.querySelector('#puzzle-type');
 const toast = document.querySelector('#result-toast');
 const multiplayerButton = document.querySelector('#multiplayer-button');
 const multiplayerBanner = document.querySelector('#multiplayer-banner');
@@ -33,6 +34,7 @@ let toastTimer;
 let cards = [];
 let clues = [];
 let puzzleNumber = 1;
+let puzzleType = 1;
 let multiplayerMode = false;
 let gameOver = false;
 let remoteSubmitHandler = null;
@@ -245,6 +247,11 @@ function renderCards() {
     </button>`).join('');
 }
 
+function renderPuzzleType() {
+  puzzleTypeDisplay.textContent = `TYPE ${puzzleType}`;
+  puzzleTypeDisplay.setAttribute('aria-label', `유형 ${puzzleType}`);
+}
+
 function colorName(color) {
   return colorNames[color];
 }
@@ -365,10 +372,12 @@ newPuzzleButton.addEventListener('click', () => {
   const puzzle = generatePuzzle();
   cards = puzzle.cards;
   clues = puzzle.clues;
+  puzzleType = puzzle.template;
   selected.clear();
   clearToast();
   puzzleNumberDisplay.textContent = String(puzzleNumber).padStart(2, '0');
   document.querySelector('.chapter-stamp').setAttribute('aria-label', `퍼즐 번호 ${puzzleNumberDisplay.textContent}`);
+  renderPuzzleType();
   renderClues();
   renderCards();
   renderSelection();
@@ -381,6 +390,8 @@ leaveRoomButton.addEventListener('click', () => window.FourCardMultiplayer?.leav
 const firstPuzzle = generatePuzzle();
 cards = firstPuzzle.cards;
 clues = firstPuzzle.clues;
+puzzleType = firstPuzzle.template;
+renderPuzzleType();
 renderClues();
 renderCards();
 renderSelection();
@@ -389,17 +400,20 @@ window.FourCardPuzzle = {
   getPuzzle() {
     return {
       cards: cards.map((card) => ({ ...card })),
-      clues: clues.map(({ id, text }) => ({ id, text }))
+      clues: clues.map(({ id, text }) => ({ id, text })),
+      template: puzzleType
     };
   },
   applyRemotePuzzle(puzzle) {
-    if (!Array.isArray(puzzle?.cards) || puzzle.cards.length !== 26 || !Array.isArray(puzzle?.clues) || ![5, 6].includes(puzzle.clues.length)) return false;
+    if (!Array.isArray(puzzle?.cards) || puzzle.cards.length !== 26 || !Array.isArray(puzzle?.clues) || ![5, 6].includes(puzzle.clues.length) || ![1, 2, 3].includes(puzzle.template)) return false;
     cards = puzzle.cards;
     clues = puzzle.clues.map(({ id, text }) => ({ id, text, test: null }));
+    puzzleType = puzzle.template;
     selected.clear();
     gameOver = false;
     clearClueResults();
     clearToast();
+    renderPuzzleType();
     renderClues();
     renderCards();
     renderSelection();
@@ -445,9 +459,11 @@ window.FourCardPuzzle = {
     const puzzle = generatePuzzle();
     cards = puzzle.cards;
     clues = puzzle.clues;
+    puzzleType = puzzle.template;
     puzzleNumber += 1;
     puzzleNumberDisplay.textContent = String(puzzleNumber).padStart(2, '0');
     document.querySelector('.chapter-stamp').setAttribute('aria-label', `퍼즐 번호 ${puzzleNumberDisplay.textContent}`);
+    renderPuzzleType();
     renderClues();
     renderCards();
     renderSelection();
